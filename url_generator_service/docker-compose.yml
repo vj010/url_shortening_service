@@ -1,0 +1,111 @@
+version: "3.9"
+
+services:      
+  url_generator_zoo1:
+    image: url-shortener-zookeeper
+    build:
+      context: .
+      dockerfile: Dockerfile.zookeeper
+    hostname: zoo1
+    container_name: zoo1
+    ports:
+      - "2181:2181"
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_SERVER_ID: 1
+      ZOOKEEPER_SERVERS: url_generator_zoo1:2888:3888
+    healthcheck:
+      test: [ "CMD", "zkServer.sh", "status"]
+      interval: 5s
+      timeout: 60s
+      retries: 12
+    networks:
+      - shawty
+    command: zkServer.sh start-foreground
+
+  url_generator_zookeper_setup:
+    image: url-shortener-zookeeper
+    container_name: zookeeper_setup
+    build:
+      context: .
+      dockerfile: Dockerfile.zookeeper
+    networks:
+      - shawty
+    depends_on:
+      url_generator_zoo1:
+        condition: service_healthy
+    command: /setup/zookeeper.config.sh
+    volumes:
+      - ./:/setup
+      
+  url_generator_web:
+    container_name: url_generator_service
+    image: url_generator_service 
+    build:
+      context: .
+      dockerfile: Dockerfile.web
+      args:
+        MODE: ${APP_MODE:-start:dev}
+    ports:
+      - ${PORT}:3000
+    environment:
+      - MONGO_CONNECTION_URL=${MONGO_CONNECTION_URL:-mongodb://root:root@url_generator_mongo:27017/short-urls}
+    env_file:
+      - "./.env"
+    networks:
+      - shawty 
+    depends_on:
+      url_generator_mongo:
+        condition: service_healthy    
+      url_generator_redis:
+        condition: service_healthy   
+      url_generator_zookeper_setup:
+        condition: service_started   
+
+  
+  url_generator_mongo:
+    image: mongo:5.0.9
+    container_name: url_generator_mongo
+    env_file:
+      - "./.env"
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=${MONGO_INITDB_ROOT_USERNAME:-root}
+      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_INITDB_ROOT_PASSWORD:-root}      
+    healthcheck:
+      test: echo 'db.runCommand({serverStatus:1}).ok' | mongo admin -u ${MONGO_INITDB_ROOT_USERNAME:-root} -p ${MONGO_INITDB_ROOT_USERNAME:-root} --quiet | grep 1
+      interval: 10s
+      timeout: 20s
+      retries: 5
+      start_period: 20s
+    networks: 
+      - shawty
+    ports:
+      - "27017:27017"
+    volumes:
+      - url_generator_mongo_vol:/data/db:rw
+  
+  url_generator_redis:
+    image: redis:7.0.8
+    container_name: url_generator_redis
+    env_file:
+      - "./.env"
+    networks:
+      - shawty    
+    healthcheck:
+      test: [ "CMD", "redis-cli", "--raw", "incr", "ping" ]
+      interval: 10s
+      timeout: 30s
+      retries: 5
+      start_period: 10s
+    volumes:
+      - url_generator_redis_vol:/data
+
+networks:
+  shawty:
+    external: true
+
+
+volumes:
+  url_generator_mongo_vol:
+  url_generator_redis_vol:
+

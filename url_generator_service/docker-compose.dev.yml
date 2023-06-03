@@ -1,0 +1,10 @@
+version: "3.9"
+
+services:      
+  url_generator_web:    
+    volumes:
+      - ./src:/usr/src/yaksa_auth_service/src
+      - ./tests:/usr/src/yaksa_auth_service/tests
+    
+  
+ 
