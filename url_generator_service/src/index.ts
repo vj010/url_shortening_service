@@ -2,7 +2,6 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 import { AppContext } from './utils/app';
-
 import mongoose from 'mongoose';
 
 const appContext: AppContext = new AppContext();
