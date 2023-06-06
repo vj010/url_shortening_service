@@ -4,21 +4,27 @@ import { UniqueStringGenerator } from '../../src/unique_string_generator/unique_
 describe('tests for class UniqueStringGenerator', () => {
   let concurrentRequestOffsetGenerator: ConcurrentRequestOffsetGenerator;
   let uniqueStringGenerator: UniqueStringGenerator;
-  // beforeAll(() => {
-  //   concurrentRequestOffsetGenerator = {
-  //     getRequestoffset: async (): Promise<number> => {
-  //       return 1;
-  //     },
-  //   };
-  //   uniqueStringGenerator = new UniqueStringGenerator(
-  //     concurrentRequestOffsetGenerator,
-  //     1,
-  //   );
-  // });
+  beforeEach(() => {
+    concurrentRequestOffsetGenerator = {
+      getRequestoffset: jest.fn(async (): Promise<number> => 0),
+    };
+    uniqueStringGenerator = new UniqueStringGenerator(
+      concurrentRequestOffsetGenerator,
+      1,
+    );
+  });
 
-  describe('getUniqueString', () => {
-    it('', () => {
-      expect(1).toEqual(1);
-    });
+  it('getUniqueString method', async () => {
+    const val = await uniqueStringGenerator.getUniqueString();
+    const getRequestoffsetSpy = jest.spyOn(
+      concurrentRequestOffsetGenerator,
+      'getRequestoffset',
+    );
+    console.log(val);
+    expect(getRequestoffsetSpy).toHaveBeenCalled();
+    expect(getRequestoffsetSpy).toHaveReturnedWith(Promise.resolve(0));
+    expect(val).not.toBeUndefined();
+    expect(val.length).toBeGreaterThan(0);
+    expect(val.length).toBeLessThanOrEqual(10);
   });
 });
